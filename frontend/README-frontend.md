@@ -1,0 +1,1 @@
+Expo frontend. Set API URL in frontend/api.js to http://172.20.10.6:4000 if needed. npm install && expo start
