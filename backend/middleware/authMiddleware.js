@@ -1,53 +1,37 @@
-// middlewares/authMiddleware.js
+const { verifyToken } = require("../utils/JsonWebToken");
 require('dotenv').config();
-const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET;
 
-const JWT_SECRET = process.env.JWT_ACCESS_SECRET || 'dev_secret';
-
-module.exports = function (req, res, next) {
-  const authHeader = req.headers['authorization'];
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Authorization header required' });
-  }
-
-  const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    return res.status(401).json({ error: 'Invalid Authorization format. Use Bearer <token>' });
-  }
-
-  const token = parts[1];
-
-  jwt.verify(token, JWT_SECRET, (err, payload) => {
-    if (err) {
-      if (err.name === 'TokenExpiredError') {
-        return res.status(401).json({ error: 'Token expired' });
-      }
-      return res.status(401).json({ error: 'Invalid token' });
+const authMiddleware = (req, res, next) => {
+  try {
+    // Lấy token từ header Authorization (Bearer token)
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Không có token hoặc token không hợp lệ!", code: "INVALID_TOKEN" });
     }
-    req.user = payload; // payload gồm { id, username, email }
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "Token không được cung cấp!", code: "MISSING_TOKEN" });
+    }
+    // Xác thực token bằng custom verifyToken
+    let payload;
+    try {
+      payload = verifyToken(token);
+    } catch (err) {
+      if (err.message === "Token đã hết hạn") {
+        return res.status(401).json({ message: "Token đã hết hạn", code: "TOKEN_EXPIRED" });
+      }
+      return res.status(401).json({ message: err.message, code: "TOKEN_ERROR" });
+    }
+    req.user = payload;
+    // Chỉ cho phép thao tác với chính mình (userId trong token phải khớp với dữ liệu truy cập nếu có)
+    if (req.body.userId && req.body.userId !== payload.userId) {
+      return res.status(403).json({ message: "Bạn không có quyền truy cập dữ liệu này!", code: "ACCESS_DENIED" });
+    }
     next();
-  });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi xác thực!", code: "AUTH_ERROR" });
+  }
 };
 
-
-
-
-
-
-// middleware/authMiddleware.js
-// require('dotenv').config();
-// const jwt = require('jsonwebtoken');
-// const JWT_SECRET = process.env.JWT_ACCESS_SECRET || 'dev_secret';
-
-// module.exports = function(req, res, next){
-//   const authHeader = req.headers['authorization'];
-//   if (!authHeader) return res.status(401).json({ error:'missing token' });
-//   const parts = authHeader.split(' ');
-//   if (parts.length !== 2) return res.status(401).json({ error:'invalid auth header' });
-//   const token = parts[1];
-//   jwt.verify(token, JWT_SECRET, (err, payload) => {
-//     if (err) return res.status(401).json({ error:'invalid token' });
-//     req.user = payload;
-//     next();
-//   });
-// };
+module.exports = authMiddleware;

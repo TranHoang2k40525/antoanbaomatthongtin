@@ -15,8 +15,11 @@ const Stack = createStackNavigator();
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
+      <Stack.Navigator initialRouteName="Home">
         
+        {/* Màn hình chính sau khi đăng nhập */}
+        <Stack.Screen name="Home" component={HomeScreen} />
+
         {/* Màn hình đăng nhập */}
         <Stack.Screen name="Login" component={LoginScreen} />
 
@@ -25,9 +28,6 @@ export default function AppNavigator() {
 
         {/* Màn hình quên mật khẩu */}
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-
-        {/* Màn hình chính sau khi đăng nhập */}
-        <Stack.Screen name="Home" component={HomeScreen} />
 
         {/* Màn hình đổi mật khẩu */}
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />

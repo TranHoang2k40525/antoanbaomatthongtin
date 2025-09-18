@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../api'; // 🔹 API backend của bạn
+import { useUser } from '../UseContext';
 
 // Custom Picker Component
 const CustomPicker = ({ value, onValueChange, items, placeholder }) => {
@@ -85,9 +86,13 @@ const RegistrationScreen = ({ navigation }) => {
     dob: '',
     gender: '',
     address: '',
+    phoneNumber: '',
+    school: '',
+    class: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const { register } = useUser();
 
   // Các lựa chọn cho giới tính
   const genderOptions = [
@@ -114,7 +119,7 @@ const RegistrationScreen = ({ navigation }) => {
   // 📥 Hàm xử lý đăng ký
   const handleRegister = async () => {
     try {
-      let { fullName, username, email, dob, address, gender, password } = formData;
+      let { fullName, username, email, dob, address, gender, password, school, class: className, phoneNumber } = formData;
 
       // Trim input
       fullName = fullName.trim();
@@ -122,7 +127,7 @@ const RegistrationScreen = ({ navigation }) => {
       email = email.trim().toLowerCase();
       address = address.trim();
 
-      if (!fullName || !username || !email || !dob || !address || !gender || !password) {
+      if (!fullName || !username || !email || !dob || !address || !gender || !password || !phoneNumber) {
         Alert.alert('Thiếu thông tin', 'Vui lòng điền đầy đủ các trường bắt buộc.');
         return;
       }
@@ -141,6 +146,13 @@ const RegistrationScreen = ({ navigation }) => {
         return;
       }
 
+      // Validate số điện thoại: 10 số, bắt đầu bằng 0
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneRegex.test(phoneNumber)) {
+        Alert.alert('Số điện thoại không hợp lệ', 'Số điện thoại phải có 10 số và bắt đầu bằng số 0.');
+        return;
+      }
+
       // Chuyển thành yyyy-mm-dd
       let dobFormatted = dob;
       const parts = dob.split('/');
@@ -148,21 +160,25 @@ const RegistrationScreen = ({ navigation }) => {
         dobFormatted = `${parts[2]}-${parts[1]}-${parts[0]}`;
       }
 
-      // Gọi API
-      await api.post('/register', {
-        fullName,
-        username,
-        email,
-        dob: dobFormatted,
-        address,
-        gender,
-        password,
-      });
+      // Map to backend fields
+      const payload = {
+        Username: username,
+        FullName: fullName,
+        DateOfBirth: dobFormatted,
+        Address: address,
+        School: school || null,
+        Class: className || null,
+        Email: email,
+        PhoneNumber: phoneNumber,
+        Password: password,
+      };
+
+      await register(payload);
 
       Alert.alert('Thành công', 'Đăng ký thành công!');
       navigation.navigate('Login');
     } catch (e) {
-      Alert.alert('Lỗi đăng ký', e.response?.data?.error || e.message);
+      Alert.alert('Lỗi đăng ký', e.response?.data?.message || e.message);
     }
   };
 
@@ -296,6 +312,21 @@ const RegistrationScreen = ({ navigation }) => {
             />
           </View>
 
+          {/* Số điện thoại */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              Số điện thoại <Text style={styles.required}>*</Text>
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              value={formData.phoneNumber}
+              onChangeText={(value) => handleInputChange('phoneNumber', value)}
+              placeholder="Nhập số điện thoại"
+              placeholderTextColor="#999"
+              keyboardType="phone-pad"
+            />
+          </View>
+
           {/* Nút đăng ký */}
           <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
             <Text style={styles.registerButtonText}>Đăng ký</Text>
@@ -377,147 +408,3 @@ const styles = StyleSheet.create({
 });
 
 export default RegistrationScreen;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import React, { useState } from 'react';
-// import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
-// import api from '../api';
-
-// export default function RegisterScreen({ navigation }) {
-//   // State quản lý input
-//   const [fullName, setFullName] = useState('');
-//   const [username, setUsername] = useState('');
-//   const [email, setEmail] = useState('');
-//   const [dob, setDob] = useState('');
-//   const [address, setAddress] = useState('');
-//   const [gender, setGender] = useState('');
-//   const [password, setPassword] = useState('');
-
-//   /**
-//    * 📥 Hàm xử lý đăng ký
-//    */
-//   const doRegister = async () => {
-//     try {
-//       await api.post('/register', {
-//         fullName,
-//         username,
-//         email,
-//         dob,
-//         address,
-//         gender,
-//         password,
-//       });
-
-//       Alert.alert('Thành công', 'Đăng ký thành công!');
-//       navigation.navigate('Login');
-//     } catch (e) {
-//       Alert.alert('Lỗi đăng ký', e.response?.data?.error || e.message);
-//     }
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>Đăng ký tài khoản</Text>
-
-//       <TextInput
-//         placeholder="Họ và tên"
-//         value={fullName}
-//         onChangeText={setFullName}
-//         style={styles.input}
-//       />
-
-//       <TextInput
-//         placeholder="Tên đăng nhập"
-//         value={username}
-//         onChangeText={setUsername}
-//         style={styles.input}
-//       />
-
-//       <TextInput
-//         placeholder="Email (chỉ chấp nhận @gmail.com)"
-//         value={email}
-//         onChangeText={setEmail}
-//         style={styles.input}
-//         keyboardType="email-address"
-//       />
-
-//       <TextInput
-//         placeholder="Ngày sinh (YYYY-MM-DD)"
-//         value={dob}
-//         onChangeText={setDob}
-//         style={styles.input}
-//       />
-
-//       <TextInput
-//         placeholder="Địa chỉ"
-//         value={address}
-//         onChangeText={setAddress}
-//         style={styles.input}
-//       />
-
-//       <TextInput
-//         placeholder="Giới tính (Nam/Nữ/Khác)"
-//         value={gender}
-//         onChangeText={setGender}
-//         style={styles.input}
-//       />
-
-//       <TextInput
-//         placeholder="Mật khẩu"
-//         secureTextEntry
-//         value={password}
-//         onChangeText={setPassword}
-//         style={styles.input}
-//       />
-
-//       <Button title="Đăng ký" onPress={doRegister} />
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     justifyContent: 'center',
-//     padding: 20,
-//     backgroundColor: '#fff',
-//   },
-//   title: {
-//     fontSize: 24,
-//     marginBottom: 20,
-//     textAlign: 'center',
-//     fontWeight: 'bold',
-//   },
-//   input: {
-//     borderWidth: 1,
-//     padding: 10,
-//     marginBottom: 15,
-//     borderRadius: 5,
-//     borderColor: '#ccc',
-//   },
-// });

@@ -1,17 +1,31 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Sửa: Thêm useEffect
 import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../api';
+import { requestForgotPasswordOtp, verifyForgotPasswordOtp } from '../api';
 
 export default function ForgotPasswordScreen({ navigation }) {
-  // State quản lý input
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [sent, setSent] = useState(false); // Trạng thái đã gửi OTP hay chưa
+  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [timer, setTimer] = useState(0); // Sửa: Thêm timer (giây)
+
+  // Đếm ngược khi gửi OTP thành công
+  useEffect(() => {
+    let interval;
+    if (sent && timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (timer === 0 && sent) {
+      Alert.alert('Thông báo', 'Mã OTP đã hết hạn!');
+      setSent(false); // Reset để gửi lại OTP
+      setCode(''); // Xóa OTP nhập
+    }
+    return () => clearInterval(interval); // Cleanup
+  }, [sent, timer]);
 
   /**
    * 📩 Gửi OTP đến email
@@ -20,11 +34,12 @@ export default function ForgotPasswordScreen({ navigation }) {
     if (!email) return Alert.alert('Lỗi', 'Vui lòng nhập email');
     try {
       setLoading(true);
-      await api.post('/forgot-password', { email });
+      await requestForgotPasswordOtp(email);
       Alert.alert('Thành công', 'Mã OTP đã được gửi đến email của bạn');
       setSent(true);
+      setTimer(60); // Bắt đầu đếm ngược 60 giây
     } catch (e) {
-      Alert.alert('Lỗi', e.response?.data?.error || e.message);
+      Alert.alert('Lỗi', e.response?.data?.message || e.message);
     } finally {
       setLoading(false);
     }
@@ -37,13 +52,16 @@ export default function ForgotPasswordScreen({ navigation }) {
     if (!code || !newPassword) {
       return Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ OTP và mật khẩu mới');
     }
+    if (newPassword.length < 6) {
+      return Alert.alert('Lỗi', 'Mật khẩu mới phải có ít nhất 6 ký tự');
+    }
     try {
       setLoading(true);
-      await api.post('/verify-otp', { email, code, newPassword });
+      await verifyForgotPasswordOtp(email, code, newPassword);
       Alert.alert('Thành công', 'Mật khẩu đã được đặt lại');
       navigation.navigate('Login');
     } catch (e) {
-      Alert.alert('Lỗi', e.response?.data?.error || e.message);
+      Alert.alert('Lỗi', e.response?.data?.message || e.message);
     } finally {
       setLoading(false);
     }
@@ -71,6 +89,8 @@ export default function ForgotPasswordScreen({ navigation }) {
         )
       ) : (
         <>
+          {/* Hiển thị đếm ngược */}
+          {timer > 0 && <Text style={styles.timer}>Thời gian còn lại: {timer} giây</Text>}
           {/* Nhập OTP */}
           <TextInput
             placeholder="Nhập mã OTP"
@@ -142,107 +162,9 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 10,
   },
+  timer: {  // Sửa: Thêm style cho timer
+    textAlign: 'center',
+    color: 'red',
+    marginBottom: 10,
+  },
 });
-
-
-
-
-
-// import React, { useState } from 'react';
-// import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
-// import api from '../api';
-
-// export default function ForgotPasswordScreen({ navigation }) {
-//   // State quản lý input
-//   const [email, setEmail] = useState('');
-//   const [code, setCode] = useState('');
-//   const [newPassword, setNewPassword] = useState('');
-//   const [sent, setSent] = useState(false); // Trạng thái đã gửi OTP hay chưa
-
-//   /**
-//    * 📩 Gửi OTP đến email
-//    */
-//   const sendOtp = async () => {
-//     try {
-//       await api.post('/forgot-password', { email });
-//       Alert.alert('Thành công', 'Mã OTP đã được gửi đến email');
-//       setSent(true);
-//     } catch (e) {
-//       Alert.alert('Lỗi', e.response?.data?.error || e.message);
-//     }
-//   };
-
-//   /**
-//    * ✅ Xác minh OTP và đặt lại mật khẩu
-//    */
-//   const verify = async () => {
-//     try {
-//       await api.post('/verify-otp', { email, code, newPassword });
-//       Alert.alert('Thành công', 'Mật khẩu đã được đặt lại');
-//       navigation.navigate('Login');
-//     } catch (e) {
-//       Alert.alert('Lỗi', e.response?.data?.error || e.message);
-//     }
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>Quên mật khẩu</Text>
-
-//       {/* Nhập email */}
-//       <TextInput
-//         placeholder="Email"
-//         value={email}
-//         onChangeText={setEmail}
-//         style={styles.input}
-//         keyboardType="email-address"
-//       />
-
-//       {!sent ? (
-//         <Button title="Gửi OTP" onPress={sendOtp} />
-//       ) : (
-//         <>
-//           {/* Nhập OTP */}
-//           <TextInput
-//             placeholder="Mã OTP"
-//             value={code}
-//             onChangeText={setCode}
-//             style={styles.input}
-//           />
-
-//           {/* Nhập mật khẩu mới */}
-//           <TextInput
-//             placeholder="Mật khẩu mới"
-//             secureTextEntry
-//             value={newPassword}
-//             onChangeText={setNewPassword}
-//             style={styles.input}
-//           />
-
-//           <Button title="Xác minh & Đặt lại" onPress={verify} />
-//         </>
-//       )}
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     justifyContent: 'center',
-//     padding: 20,
-//   },
-//   title: {
-//     fontSize: 24,
-//     marginBottom: 20,
-//     textAlign: 'center',
-//     fontWeight: 'bold',
-//   },
-//   input: {
-//     borderWidth: 1,
-//     padding: 10,
-//     marginBottom: 12,
-//     borderRadius: 5,
-//     borderColor: '#ccc',
-//   },
-// });

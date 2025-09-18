@@ -12,37 +12,27 @@ import {
   Platform,
   Image,
 } from 'react-native';
-import api, { saveTokens } from '../api';
+import api from '../api';
+import { useUser } from '../UseContext';
 
 export default function LoginScreen({ navigation }) {
-  const [account, setAccount] = useState(''); // nhập email hoặc username
+  const [account, setAccount] = useState(''); // nhập email hoặc sdt
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const { login } = useUser();
 
-  /**
-   * 📥 Xử lý đăng nhập
-   */
   const handleLogin = async () => {
     const trimmedAccount = account.trim();
     const trimmedPassword = password.trim();
-
     if (!trimmedAccount || !trimmedPassword) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập đầy đủ email/tài khoản và mật khẩu');
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập đầy đủ email/sdt và mật khẩu');
       return;
     }
-
     try {
-      const res = await api.post('/login', {
-        usernameOrEmail: trimmedAccount,
-        password: trimmedPassword,
-      });
-
-      const data = res.data;
-      await saveTokens(data.accessToken, data.refreshToken);
-
-      navigation.replace('Home'); // 🔹 Chuyển sang Home sau khi login thành công
+      await login(trimmedAccount, trimmedPassword);
+      navigation.replace('Home');
     } catch (e) {
-      Alert.alert('Lỗi đăng nhập', e.response?.data?.error || e.message);
+      Alert.alert('Lỗi đăng nhập', e.response?.data?.message || e.message);
     }
   };
 
@@ -297,95 +287,3 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
 });
-
-
-
-
-// import React, { useState } from 'react';
-// import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
-// import api, { saveTokens } from '../api';
-
-// export default function LoginScreen({ navigation }) {
-//   // State quản lý input
-//   const [username, setUsername] = useState('');
-//   const [password, setPassword] = useState('');
-
-//   /**
-//    * 📥 Xử lý đăng nhập
-//    */
-//   const handleLogin = async () => {
-//     try {
-//       const res = await api.post('/login', { username, password });
-//       const data = res.data;
-
-//       // Lưu token vào AsyncStorage
-//       await saveTokens(data.accessToken, data.refreshToken);
-
-//       // Điều hướng sang Home và thay thế stack (không quay lại được Login)
-//       navigation.replace('Home');
-//     } catch (e) {
-//       Alert.alert(
-//         'Lỗi đăng nhập',
-//         e.response?.data?.error || e.message
-//       );
-//     }
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>Đăng nhập</Text>
-
-//       <TextInput
-//         placeholder="Tên đăng nhập"
-//         value={username}
-//         onChangeText={setUsername}
-//         style={styles.input}
-//       />
-
-//       <TextInput
-//         placeholder="Mật khẩu"
-//         secureTextEntry
-//         value={password}
-//         onChangeText={setPassword}
-//         style={styles.input}
-//       />
-
-//       <Button title="Đăng nhập" onPress={handleLogin} />
-
-//       <View style={{ marginTop: 10 }}>
-//         <Button
-//           title="Đăng ký"
-//           onPress={() => navigation.navigate('Register')}
-//         />
-//       </View>
-
-//       <View style={{ marginTop: 10 }}>
-//         <Button
-//           title="Quên mật khẩu"
-//           onPress={() => navigation.navigate('ForgotPassword')}
-//         />
-//       </View>
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     justifyContent: 'center',
-//     padding: 20,
-//   },
-//   title: {
-//     fontSize: 24,
-//     marginBottom: 20,
-//     textAlign: 'center',
-//     fontWeight: 'bold',
-//   },
-//   input: {
-//     borderWidth: 1,
-//     padding: 10,
-//     marginBottom: 12,
-//     borderRadius: 5,
-//     borderColor: '#ccc',
-//   },
-// });

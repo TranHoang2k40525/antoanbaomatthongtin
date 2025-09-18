@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const authController = require('./controllers/authController');
 const authMiddleware = require('./middleware/authMiddleware');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT||4000;
@@ -13,14 +14,16 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(cors({ origin: true, credentials: true }));
 
-app.post('/api/register', authController.register);
-app.post('/api/login', authController.login);
-app.post('/api/refresh', authController.refreshToken);
-app.post('/api/logout', authController.logout);
-app.post('/api/change-password', authMiddleware, authController.changePassword);
-app.post('/api/forgot-password', authController.forgotPassword);
-app.post('/api/verify-otp', authController.verifyOtpAndReset);
+// Phục vụ file ảnh tĩnh
+app.use('/Assets/images', express.static(path.join(__dirname, 'Assets/images')));
 
-app.get('/api/protected', authMiddleware, (req, res) => res.json({ message: 'protected data', user: req.user }));
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/user');
+app.use('/api/auth', authRoutes); // tài khoản
+app.use('/api/user', userRoutes); // người dùng
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Welcome to the Auth API!' });
+});
 
 app.listen(PORT, ()=> console.log('Server running on port', PORT));

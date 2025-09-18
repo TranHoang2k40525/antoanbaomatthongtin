@@ -1,15 +1,19 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Địa chỉ backend API
-const API_URL = 'http://192.168.0.102:4000/api';
+// Địa chỉ backend API (chỉ sửa ở đây, các file khác chỉ import api.js)
+export const API_URL = 'http://192.168.1.105:4000/api';
 
 // Biến lưu token trong bộ nhớ tạm (RAM)
 let accessToken = null;
 let refreshToken = null;
 
+export function getApiUrl() {
+  return API_URL;
+}
+
 /**
- * 📥 Load token từ AsyncStorage khi app khởi động
+ * Load token từ AsyncStorage khi app khởi động
  */
 export async function loadTokensFromStorage() {
   accessToken = await AsyncStorage.getItem('accessToken');
@@ -17,7 +21,7 @@ export async function loadTokensFromStorage() {
 }
 
 /**
- * 💾 Lưu token vào AsyncStorage + biến tạm
+ * Lưu token vào AsyncStorage + biến tạm
  */
 export async function saveTokens(a, r) {
   accessToken = a;
@@ -27,7 +31,7 @@ export async function saveTokens(a, r) {
 }
 
 /**
- * 🗑️ Xóa token khỏi AsyncStorage + biến tạm
+ * Xóa token khỏi AsyncStorage + biến tạm
  */
 export async function clearTokens() {
   accessToken = null;
@@ -37,7 +41,7 @@ export async function clearTokens() {
 }
 
 /**
- * 🚀 Tạo instance Axios
+ * Tạo instance Axios
  */
 const api = axios.create({
   baseURL: API_URL,
@@ -45,7 +49,7 @@ const api = axios.create({
 });
 
 /**
- * 🔑 Request Interceptor
+ * Request Interceptor
  * - Tự động gắn Access Token vào header Authorization trước khi gửi request
  */
 api.interceptors.request.use(async (config) => {
@@ -59,7 +63,7 @@ api.interceptors.request.use(async (config) => {
 });
 
 /**
- * ♻️ Response Interceptor
+ *  Response Interceptor
  * - Nếu gặp lỗi 401 (token hết hạn) → thử refresh token
  */
 api.interceptors.response.use(
@@ -80,8 +84,8 @@ api.interceptors.response.use(
 
       try {
         // Gọi API refresh token
-        const r = await axios.post(`${API_URL}/refresh`, { refreshToken: rt });
-        const newAccess = r.data.accessToken;
+        const r = await axios.post(`${API_URL}/auth/refresh`, { refreshToken: rt });
+        const newAccess = r.data.token;
 
         // Lưu lại access token mới
         accessToken = newAccess;
@@ -100,5 +104,19 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Endpoint chuẩn hóa cho các màn hình khác chỉ cần import từ đây
+export const loginApi = (EmailOrPhone, Password) => api.post('/auth/login', { EmailOrPhone, Password });
+export const registerApi = (data) => api.post('/auth/register', data);
+export const getUserApi = () => api.get('/user/me');
+export const updateUserApi = (data) => api.put('/user/me', data);
+export const updateAvatarApi = (formData) => api.post('/user/me/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+
+// Forgot password (OTP)
+export const requestForgotPasswordOtp = (email) => api.post('/auth/forgot-password/request-otp', { email });
+export const verifyForgotPasswordOtp = (email, code, newPassword) => api.post('/auth/forgot-password/verify', { email, code, newPassword });
+// Change password (OTP, must be logged in) - SỬA: Gửi oldPassword khi request OTP
+export const requestChangePasswordOtp = (oldPassword) => api.post('/auth/change-password/request-otp', { oldPassword });
+export const verifyChangePasswordOtp = (oldPassword, newPassword, code) => api.post('/auth/change-password/verify', { oldPassword, newPassword, code });
 
 export default api;
